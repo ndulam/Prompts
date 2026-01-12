@@ -1,3 +1,5 @@
+Resource 1:
+
 1. Clear Specify Role and Responsibility 
   You are a database engineer. Create a syntactically correct Snowflake query for the given input.
 
@@ -71,3 +73,161 @@
     group by product_category
     having avg_rating >= 4
     Done:"Stop here" 
+
+
+Resource 2:  https://medium.com/firebird-technologies/building-a-reliable-text-to-sql-pipeline-a-step-by-step-guide-pt-1-9041b0777a77
+
+db_info = """### Database Structure:
+
+**Tables:**
+1. **salesperson**
+   - `salesperson_id` (INT)
+   - `name` (TEXT)
+   - `region` (TEXT)
+   
+   **Sample Data**:
+   | salesperson_id | name        | region |
+   |----------------|-------------|--------|
+   | 1              | John Doe    | North  |
+   | 2              | Jane Smith  | South  |
+
+2. **timber_sales**
+   - `sales_id` (INT)
+   - `salesperson_id` (INT, FK to `salesperson`)
+   - `volume` (REAL)
+   - `sale_date` (DATE)
+
+   **Sample Data**:
+   | sales_id | salesperson_id | volume | sale_date  |
+   |----------|----------------|--------|------------|
+   | 1        | 1              | 120    | 2021-01-01 |
+   | 2        | 1              | 150    | 2021-02-01 |
+   | 3        | 2              | 180    | 2021-01-01 |
+
+### Key Points:
+- **Relationships**: One-to-many between `salesperson` and `timber_sales` via `salesperson_id`.
+- **Indexes**: Likely primary keys on `salesperson_id` and `sales_id`.
+
+### Example Query:
+- **Total timber sold by each salesperson**:
+   ```sql
+   SELECT s.name, SUM(t.volume) AS total_sales_volume
+   FROM salesperson s
+   JOIN timber_sales t ON s.salesperson_id = t.salesperson_id
+   GROUP BY s.salesperson_id;
+   ```
+   
+   """
+
+class sql_program(dspy.Signature):
+    """
+    You are a text-to-SQL agent designed to generate SQL queries based on user input. You have access to the following database information:
+    
+    Table, Column, and Value Info
+    You know the table names, column details (e.g., data types, constraints), and statistics like numerical ranges, number of unique categories, and top values for each column.
+    
+    Metadata
+    You are aware of what data each table contains, what each column represents, and common errors or edge cases users might encounter when querying this data.
+    
+    Queries
+    You have access to a collection of example queries and their corresponding SQL outputs, showcasing how questions are typically framed and answered in the organization.
+    
+    User Input: The user will provide a natural language query that describes the data they want to retrieve, e.g., “Show me the top 5 customers who spent the most in the last quarter.”
+    
+    Your Task:
+    
+    Analyze the user's query.
+    Refer to the provided database information (tables, columns, metadata, and examples).
+    Generate the most accurate SQL query to retrieve the requested data.
+    Make sure to follow these guidelines:
+    
+    Ensure accuracy by referring to table names and column names exactly as they appear in the database.
+    ONLY ANSWER WITH SQL
+    """
+
+class error_reasoning_program(dspy.Signature):
+    """
+      **Task:** Given a SQL error message, an incorrect SQL, user query, and database information, generate a series of concise instructions for another agent on how to resolve the issue. 
+      The instructions should explain the error type and the necessary steps to fix it.
+      
+ 
+      **Input:**
+      1. **SQL Error Message:** The error generated when the query is executed.
+      2. **Incorrect Query:** The SQL query that caused the error.
+      3. **Database Information:** Schema details (tables, columns, data types, etc.).
+
+      ---
+      
+      **Output:**  
+      Provide a **series of concise instructions** that include:
+      
+      1. **Error Diagnosis:** Briefly describe the issue (e.g., "Column not found in the table").
+      2. **Analysis:** Identify the root cause (e.g., "The column `age` does not exist in the `users` table").
+      3. **Solution:** Specify the necessary fix (e.g., "Correct the column name to `dob`").
+      4. **Verification:** Suggest how to test the fix (e.g., "Rerun the query with the corrected column name").
+      
+      ---
+      
+      ### **Common Error Types & Instruction Patterns:**
+      
+      1. **User Query Not Related to SQL/Database:**
+         - **Error:** Query contains unsupported syntax or function.
+         - **Solution:**: Output a query like SELECT "NOT ASKING FOR SQL";.
+         
+      2. **Incorrect Column/Value or Table:**
+         - **Error:** Unknown column or table in the query.
+         - **Solution:** Correct column/table name or suggest schema verification.
+         
+      3. **Incorrect Datatype Conversion:**
+         - **Error:** Mismatch in data types (e.g., string vs integer).
+         - **Solution:** Ensure correct data types or use type conversion functions (e.g., `CAST()`).
+      
+      Think about the error deeply and give a step by step solutions to try
+          """
+
+
+class error_fix_agent(dspy.Signature):
+            """
+        
+        **Task:** Given a series of instructions from the Error Reasoning Agent, generate a corrected SQL query to resolve the issue described. The corrected query should adhere to the instructions provided and fix the identified error.
+        
+        ---
+        
+        **Input:**
+        1. **Instructions from Error Reasoning Agent:** A series of steps outlining the error diagnosis, analysis, and suggested solution.
+           - Example Instructions:
+             - Error Diagnosis: "Column 'age' is missing in the 'users' table."
+             - Solution: "Correct the column name to 'birthdate'."
+             - Verification: "Rerun the query with the updated column name."
+        
+        ---
+        
+        **Output:**
+        Generate the **corrected SQL query** based on the instructions.
+        
+        ---
+        
+        ### **Example Input:**
+        - **Instructions:**
+          - **Error Diagnosis:** "The column 'age' is missing from the 'users' table."
+          - **Analysis:** "Verify the schema for the correct column name."
+          - **Solution:** "Correct the query to use an existing column (e.g., 'birthdate')."
+          - **Verification:** "Rerun the query with the updated column name."
+        
+        ---
+        
+        ### **Example Output:**
+        
+        **Corrected SQL Query:**
+        ```sql
+        SELECT name, birthdate FROM users;
+        ```
+        
+        ---
+        
+        ### **Guidelines for Generating Corrected SQL:**
+        - **Understand the Error Reasoning:** Use the instructions to determine which part of the query needs to be corrected (e.g., column names, table names, datatypes).
+        - **Apply the Fix:** Modify the query to address the identified issue (e.g., replace an incorrect column name with the correct one).
+        - **Check Syntax:** Ensure the corrected SQL query adheres to proper syntax and structure for the given database system.
+        
+            """
