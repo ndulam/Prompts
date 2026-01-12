@@ -77,6 +77,8 @@ Resource 1:
 
 Resource 2:  https://medium.com/firebird-technologies/building-a-reliable-text-to-sql-pipeline-a-step-by-step-guide-pt-1-9041b0777a77
 
+https://miro.medium.com/v2/resize:fit:4800/format:webp/1*LBSQXLofIiu5hJvB-BMs9A.png
+
 db_info = """### Database Structure:
 
 **Tables:**
